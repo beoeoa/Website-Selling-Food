@@ -1,55 +1,31 @@
 name: Deploy Laravel App to Azure Web App - webban
 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v2
+    
+    # Cài PHP version 8.0 (hoặc phiên bản bạn cần)
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.0'
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.2'
+    # Tiếp tục các bước khác ví dụ composer install, artisan commands
+    - name: Install dependencies
+      run: composer install --no-dev --optimize-autoloader
 
-      - name: Install Composer dependencies
-        working-directory: finalproject
-        run: composer install --no-dev --prefer-dist --no-progress --no-suggest
+    - name: Run migrations
+      run: php artisan migrate --force
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: php-app
-          path: ./finalproject
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: laravel-app
-
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_45A8CBE0C2F0417BA86D7211AFC0A497 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_F073A946FB6A4B18A9C18E76EB996F5F }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_CDAF0790268B4ACE82E4535DA3C50C2B }}
-
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'webban'
-          slot-name: 'Production'
-          package: .
-
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'webban'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: .
